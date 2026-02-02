@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #define REG_COUNT 8
 //Structs/Enums and Typedefs
 typedef enum {
@@ -10,6 +11,11 @@ typedef enum {
     ADD,
     SUB,
     END,
+    CAST,
+    MUL,
+    DIV,
+    MOD,
+    POW,
 }Opcode;
 typedef struct {
     char code[7];
@@ -43,6 +49,7 @@ typedef struct {
 }Machine;
 Machine m1={0};
 //Functions
+//Memory Operations
 int FMOV(Operand op1,Operand op2){
     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
         fprintf(m1.outputfile,"MOV Failed: Invalid operands");
@@ -58,6 +65,20 @@ int FMOV(Operand op1,Operand op2){
     fprintf(m1.outputfile,"Operand status %d",*op1.value.intp);
     return 0;
 }
+int FCAST(Operand op1,Operand op2){
+     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+        fprintf(m1.outputfile,"CAST Failed: Invalid operands");
+        return 1;
+    }
+    if(op1.type==INT){
+        *op1.value.intp=(int)*op2.value.floatp;
+    }
+    else if(op1.type==FLOAT){
+        *op1.value.floatp=(float)*op2.value.intp;
+    }
+    return 0;
+}
+//Arithemtic/Math operations
 int FADD(Operand op1,Operand op2){
     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
         fprintf(m1.outputfile,"ADD Failed: Invalid operands");
@@ -84,6 +105,63 @@ int FSUB(Operand op1,Operand op2){
     }
     return 0;
 }
+int FMUL(Operand op1,Operand op2){
+     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+        fprintf(m1.outputfile,"MUL Failed: Invalid operands");
+        return 1;
+    }
+    if(op1.type==INT){
+        *op1.value.intp*=*op2.value.intp;
+    }
+    else if (op1.type==FLOAT){
+        *op1.value.floatp*=*op2.value.floatp;
+    }
+    return 0;
+}
+int FDIV(Operand op1,Operand op2){
+    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+        fprintf(m1.outputfile,"DIV Failed: Invalid operands");
+        return 1;
+    }
+    if (*op2.value.intp==0) {
+        fprintf(m1.outputfile,"DIV Failed: Cannot divide by 0");
+        return 1;
+    }
+    if(op1.type==INT){
+        *op1.value.intp/=*op2.value.intp;
+    }
+    else if (op1.type==FLOAT){
+        *op1.value.floatp/=*op2.value.floatp;
+    }
+    return 0;
+
+}
+int FMOD(Operand op1,Operand op2){
+    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op1.type==FLOAT){
+        fprintf(m1.outputfile,"MOD Failed: Invalid operands");
+        return 1;
+    }
+    if (*op2.value.intp==0) {
+        fprintf(m1.outputfile,"MOD Failed: Cannot module by 0");
+        return 1;
+    }
+    *op1.value.intp%=*op2.value.intp;
+    return 0;
+}
+int FPOW(Operand op1,Operand op2){
+     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+        fprintf(m1.outputfile,"POW Failed: Invalid operands");
+        return 1;
+    }
+    if(op1.type==INT){
+        *op1.value.intp=pow(*op1.value.intp,*op2.value.intp);
+    }
+    else if (op1.type==FLOAT){
+    *op1.value.floatp=pow(*op1.value.floatp,*op2.value.floatp);
+    }
+    return 0;
+}
+//Jumps and Misc
 int FEND(Operand op1,Operand op2){
     if (op1.type==NOTHING && op2.type==NOTHING){
         m1.run=0;
@@ -92,6 +170,7 @@ int FEND(Operand op1,Operand op2){
     fprintf(m1.outputfile,"END Failed: Invalid operands");
     return 1;
 }
+//Interpreter functions
 void Reset(Inst* curInst,ParsedInst* ParseInst){
     strcpy(curInst->code," ");
     strcpy(curInst->op1," ");
@@ -106,6 +185,10 @@ Opcode CheckOpcode(Inst* curInst){
     if(strcmp(curInst->code,"ADD")==0) return ADD;
     if(strcmp(curInst->code,"SUB")==0) return SUB;
     if(strcmp(curInst->code,"END")==0) return END;
+    if(strcmp(curInst->code,"CAST")==0) return CAST;
+    if(strcmp(curInst->code,"MUL")==0) return MUL;
+    if(strcmp(curInst->code,"DIV")==0) return DIV;
+    if(strcmp(curInst->code,"POW")==0) return POW;
     return UNDEFINED;
 }
 int ReadInstruction(Inst* curInst,char* line){
@@ -119,18 +202,14 @@ int ReadInstruction(Inst* curInst,char* line){
 }
 int Execute(ParsedInst* cInst){
     switch (cInst->opcode)
-    {   case MOV: 
-        return FMOV(cInst->op1,cInst->op2);
-        break;
-        case ADD:
-        return FADD(cInst->op1,cInst->op2);
-        break;
-        case SUB:
-        return FSUB(cInst->op1,cInst->op2);
-        break;
-        case END:
-        return FEND(cInst->op1,cInst->op2);
-        break;
+    {   case MOV: return FMOV(cInst->op1,cInst->op2);
+        case ADD: return FADD(cInst->op1,cInst->op2);
+        case SUB: return FSUB(cInst->op1,cInst->op2);
+        case END: return FEND(cInst->op1,cInst->op2);
+        case CAST: return FCAST(cInst->op1,cInst->op2);
+        case MUL: return FMUL(cInst->op1,cInst->op2);
+        case DIV: return FDIV(cInst->op1,cInst->op2);
+        case POW: return FPOW(cInst->op1,cInst->op2);
         default: return 1;
     
     }
@@ -179,14 +258,6 @@ Operand ParseOperand(char* operand){
     return op;
     
 }
-/*int ParseInstruction(Inst* curInst){
-    cInst.opcode=CheckOpcode(curInst);
-    cInst.op1=ParseOperand(curInst->op1);
-    cInst.op2=ParseOperand(curInst->op2);
-    Execute(cInst);
-    return 1;
-
-}*/
 
 void sgetline(char** cursor,char* line){
     int offset=0;
@@ -235,7 +306,7 @@ int main(int argc,char* argv[]){
         ParseInst.op2=ParseOperand(curInst.op2);
         Execute(&ParseInst);
     }
-    fprintf(m1.outputfile,"The output is:%20e\n",m1.x[0]);
+    fprintf(m1.outputfile,"The output for X is:%20e\n The output for R is:%d\n",m1.x[0],m1.r[0]);
     fprintf(m1.outputfile,"The program ended with code:%d",m1.run);
     fclose(File);
     fclose(m1.outputfile);
