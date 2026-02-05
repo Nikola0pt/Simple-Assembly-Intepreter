@@ -54,22 +54,20 @@ Machine m1={0};
 //Memory Operations
 int FMOV(Operand op1,Operand op2){
     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
-        fprintf(m1.outputfile,"MOV Failed: Invalid operands");
+        printf("MOV Failed: Invalid operands\n");
         return 1;
     }
-    fprintf(m1.outputfile,"Execute MOV \n");
     if(op1.type==INT){
         *op1.value.intp=*op2.value.intp;
     }
     else if (op1.type==FLOAT){
         *op1.value.floatp=*op2.value.floatp;
     }
-    fprintf(m1.outputfile,"Operand status %d",*op1.value.intp);
     return 0;
 }
 int FCAST(Operand op1,Operand op2){
      if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
-        fprintf(m1.outputfile,"CAST Failed: Invalid operands");
+        printf("CAST Failed: Invalid operands\n");
         return 1;
     }
     if(op1.type==INT){
@@ -83,7 +81,7 @@ int FCAST(Operand op1,Operand op2){
 //Arithemtic/Math operations
 int FADD(Operand op1,Operand op2){
     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
-        fprintf(m1.outputfile,"ADD Failed: Invalid operands");
+        printf("ADD Failed: Invalid operands\n");
         return 1;
     }
     if(op1.type==INT){
@@ -96,7 +94,7 @@ int FADD(Operand op1,Operand op2){
 }
 int FSUB(Operand op1,Operand op2){
    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
-        fprintf(m1.outputfile,"SUB Failed: Invalid operands");
+        printf("SUB Failed: Invalid operands\n");
         return 1;
     }
     if(op1.type==INT){
@@ -109,7 +107,7 @@ int FSUB(Operand op1,Operand op2){
 }
 int FMUL(Operand op1,Operand op2){
      if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
-        fprintf(m1.outputfile,"MUL Failed: Invalid operands");
+        printf("MUL Failed: Invalid operands\n");
         return 1;
     }
     if(op1.type==INT){
@@ -122,11 +120,11 @@ int FMUL(Operand op1,Operand op2){
 }
 int FDIV(Operand op1,Operand op2){
     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
-        fprintf(m1.outputfile,"DIV Failed: Invalid operands");
+        printf("DIV Failed: Invalid operands\n");
         return 1;
     }
     if (*op2.value.intp==0) {
-        fprintf(m1.outputfile,"DIV Failed: Cannot divide by 0");
+        printf("DIV Failed: Cannot divide by 0\n");
         return 1;
     }
     if(op1.type==INT){
@@ -140,11 +138,11 @@ int FDIV(Operand op1,Operand op2){
 }
 int FMOD(Operand op1,Operand op2){
     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op1.type==FLOAT){
-        fprintf(m1.outputfile,"MOD Failed: Invalid operands");
+        printf("MOD Failed: Invalid operands\n");
         return 1;
     }
     if (*op2.value.intp==0) {
-        fprintf(m1.outputfile,"MOD Failed: Cannot module by 0");
+        printf("MOD Failed: Cannot module by 0\n");
         return 1;
     }
     *op1.value.intp%=*op2.value.intp;
@@ -152,7 +150,7 @@ int FMOD(Operand op1,Operand op2){
 }
 int FPOW(Operand op1,Operand op2){
      if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
-        fprintf(m1.outputfile,"POW Failed: Invalid operands");
+        printf("POW Failed: Invalid operands\n");
         return 1;
     }
     if(op1.type==INT){
@@ -169,12 +167,12 @@ int FEND(Operand op1,Operand op2){
         m1.run=0;
         return 0;
     }
-    fprintf(m1.outputfile,"END Failed: Invalid operands");
+    printf("END Failed: Invalid operands\n");
     return 1;
 }
 int FIN(Operand op1,Operand op2){
     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type!=NOTHING){
-        fprintf(m1.outputfile,"IN Failed: Invalid operands");
+        printf("IN Failed: Invalid operands\n");
         return 1;
     }
     if(op1.type==INT){
@@ -187,7 +185,7 @@ int FIN(Operand op1,Operand op2){
 }
 int FOUT(Operand op1,Operand op2){
     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT|| op2.type!=NOTHING){
-        fprintf(m1.outputfile,"OUT Failed: Invalid operands");
+        printf("OUT Failed: Invalid operands\n");
         return 1;
 }
     if(op1.type==INT){
@@ -227,6 +225,7 @@ int ReadInstruction(Inst* curInst,char* line){
     if(extra!=' '){
         return 1;
     }
+    if(strcmp(curInst->code," ")==0) return 1;
     return 0;
    
 }
@@ -261,7 +260,6 @@ Operand ParseOperand(char* operand){
         reg=strtol(operand+1,&endptr,10);
         if(*endptr!='\0') return op;
         if(reg>0 && reg<REG_COUNT+1){
-            fprintf(m1.outputfile,"Operand parsed as register %d\n",reg);
             if (operand[0]=='R'){
                 op.value.intp=&m1.r[reg-1];
                 op.type=INT;
@@ -272,7 +270,6 @@ Operand ParseOperand(char* operand){
             }
             return op;
         }
-        fprintf(m1.outputfile,"error Parsing operand (not a valid register) %d\n",reg);
         return op;
     }
     m1.constant.iconst=strtol(operand,&endptr,10);
@@ -280,24 +277,24 @@ Operand ParseOperand(char* operand){
         m1.constant.fconst=strtof(operand,&endptr);
     }
     if(*endptr!='\0'){
-        
-        fprintf(m1.outputfile,"error parsing operand (invalid constant):%s\n",endptr);
         return op;
     }
-    fprintf(m1.outputfile,"Operand parsed as constant:%d\n",m1.constant);
     op.type=CONSTANT;
     op.value.intp=&m1.constant.iconst;
     return op;
     
 }
 
-void sgetline(char** cursor,char* line){
+int sgetline(char* line){
     int offset=0;
-    sscanf(*cursor,"\n%99[^#\n]%n",line,&offset);
-    *cursor+=offset;
-    if(line[0]=='\0') return;
+    char temp[100];
+    sscanf(m1.cursor,"\n%99[^\n]%n",temp,&offset);
+    m1.cursor+=offset;
+    if(temp[0]=='\0') return 1;
     offset=0;
-    while(**cursor!='\0'&&**cursor!='\n') (*cursor)++;
+    sscanf(temp,"%99[^#]",line);
+    while(*m1.cursor!='\0'&&*m1.cursor!='\n') (m1.cursor)++;
+    return 0;
     
 }
 
@@ -321,25 +318,42 @@ int main(int argc,char* argv[]){
     File=fopen("program.txt","r");
     m1.outputfile=fopen("debug.txt","w");
     if(File==NULL){
-        fprintf(stderr,"Failed to load file");
+        fprintf(m1.outputfile,"Failed to load file");
         return 1;
     }
-    const char* program=ReadFile(File);
-    char* cursor=program;
+    const char* const program=ReadFile(File);
+    m1.cursor=program;
     while (m1.run){
         Reset(&curInst,&ParseInst);
         char line[100];
         line[0]='\0';
-        sgetline(&cursor,line);
-        if(line[0]=='\0') break;
-        ReadInstruction(&curInst,line);
+        if(sgetline(line)) break;
+        if(line[0]=='\0') continue;
+        if(ReadInstruction(&curInst,line)) {
+            printf("ERROR:Instruction read unsuccessfully\n");
+            break;
+        }
         ParseInst.opcode=CheckOpcode(&curInst);
+        if(ParseInst.opcode==UNDEFINED){
+            printf("ERROR:Unknown/undefined instruction\n");
+            break;
+        }
         ParseInst.op1=ParseOperand(curInst.op1);
+        if(ParseInst.op1.type==ERROR){
+            printf("ERROR:First operand failed parse\n");
+            break;
+        }
         ParseInst.op2=ParseOperand(curInst.op2);
-        Execute(&ParseInst);
+        if(ParseInst.op2.type==ERROR){
+            printf("ERROR:Second operand failed parse\n");
+            break;
+        }
+        if(Execute(&ParseInst)){
+            printf("ERROR: Execution failed\n");
+            break;
+        }
     }
-    fprintf(m1.outputfile,"The output for X is:%f\n The output for R is:%d\n",m1.x[0],m1.r[0]);
-    fprintf(m1.outputfile,"The program ended with code:%d",m1.run);
+    printf("Program closed with a error code %d\n",m1.run);
     fclose(File);
     fclose(m1.outputfile);
     free(program);
