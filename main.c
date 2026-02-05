@@ -297,7 +297,18 @@ int sgetline(char* line){
     return 0;
     
 }
-
+void DumpState(Inst* CurInst){
+    fprintf(m1.outputfile,"Current Instruction: %s %s %s\n",CurInst->code,CurInst->op1,CurInst->op2);
+    fprintf(m1.outputfile,"State of registers:\n");
+    for(int i=0;i<REG_COUNT;i++){
+        fprintf(m1.outputfile,"R%d=%d ",i+1,m1.r[i]);
+    }
+    fprintf(m1.outputfile,"\n");
+    for(int i=0;i<REG_COUNT;i++){
+        fprintf(m1.outputfile,"X%d=%f ",i+1,m1.x[i]);
+    }
+    fprintf(m1.outputfile,"\n");
+}
 
 
 char* ReadFile(FILE* File){
@@ -352,6 +363,7 @@ int main(int argc,char* argv[]){
             printf("ERROR: Execution failed\n");
             break;
         }
+        DumpState(&curInst);
     }
     printf("Program closed with a error code %d\n",m1.run);
     fclose(File);
