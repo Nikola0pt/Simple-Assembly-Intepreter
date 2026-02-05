@@ -16,6 +16,8 @@ typedef enum {
     DIV,
     MOD,
     POW,
+    IN,
+    OUT,
 }Opcode;
 typedef struct {
     char code[7];
@@ -154,7 +156,7 @@ int FPOW(Operand op1,Operand op2){
         return 1;
     }
     if(op1.type==INT){
-        *op1.value.intp=pow(*op1.value.intp,*op2.value.intp);
+        *op1.value.intp=lround(pow(*op1.value.intp,*op2.value.intp));
     }
     else if (op1.type==FLOAT){
     *op1.value.floatp=pow(*op1.value.floatp,*op2.value.floatp);
@@ -169,6 +171,32 @@ int FEND(Operand op1,Operand op2){
     }
     fprintf(m1.outputfile,"END Failed: Invalid operands");
     return 1;
+}
+int FIN(Operand op1,Operand op2){
+    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type!=NOTHING){
+        fprintf(m1.outputfile,"IN Failed: Invalid operands");
+        return 1;
+    }
+    if(op1.type==INT){
+        scanf("%d",op1.value.intp);
+    }
+    else {
+        scanf("%f",op1.value.floatp);
+    }
+    return 0;
+}
+int FOUT(Operand op1,Operand op2){
+    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT|| op2.type!=NOTHING){
+        fprintf(m1.outputfile,"OUT Failed: Invalid operands");
+        return 1;
+}
+    if(op1.type==INT){
+        printf("Output is:%d\n",*op1.value.intp);
+    }
+    else {
+        printf("Output is:%f\n",*op1.value.floatp);
+    }
+    return 0;
 }
 //Interpreter functions
 void Reset(Inst* curInst,ParsedInst* ParseInst){
@@ -189,6 +217,8 @@ Opcode CheckOpcode(Inst* curInst){
     if(strcmp(curInst->code,"MUL")==0) return MUL;
     if(strcmp(curInst->code,"DIV")==0) return DIV;
     if(strcmp(curInst->code,"POW")==0) return POW;
+    if(strcmp(curInst->code,"IN")==0) return IN;
+    if(strcmp(curInst->code,"OUT")==0) return OUT;
     return UNDEFINED;
 }
 int ReadInstruction(Inst* curInst,char* line){
@@ -210,6 +240,8 @@ int Execute(ParsedInst* cInst){
         case MUL: return FMUL(cInst->op1,cInst->op2);
         case DIV: return FDIV(cInst->op1,cInst->op2);
         case POW: return FPOW(cInst->op1,cInst->op2);
+        case IN: return FIN(cInst->op1,cInst->op2);
+        case OUT: return FOUT(cInst->op1,cInst->op2);
         default: return 1;
     
     }
@@ -254,7 +286,7 @@ Operand ParseOperand(char* operand){
     }
     fprintf(m1.outputfile,"Operand parsed as constant:%d\n",m1.constant);
     op.type=CONSTANT;
-    op.value.intp=(int*)&m1.constant;
+    op.value.intp=&m1.constant.iconst;
     return op;
     
 }
@@ -306,10 +338,11 @@ int main(int argc,char* argv[]){
         ParseInst.op2=ParseOperand(curInst.op2);
         Execute(&ParseInst);
     }
-    fprintf(m1.outputfile,"The output for X is:%20e\n The output for R is:%d\n",m1.x[0],m1.r[0]);
+    fprintf(m1.outputfile,"The output for X is:%f\n The output for R is:%d\n",m1.x[0],m1.r[0]);
     fprintf(m1.outputfile,"The program ended with code:%d",m1.run);
     fclose(File);
     fclose(m1.outputfile);
+    free(program);
     return 0;
 
 }
