@@ -18,19 +18,21 @@ typedef enum {
     POW,
     IN,
     OUT,
+    PUTC,
 }Opcode;
 typedef struct {
     char code[7];
-    char op1[6];
+    char op1[100];
     char op2[12];
 }Inst;
 typedef struct {
     union {
         int* intp;
         float* floatp;
+        char* str;
     }value;
     enum {
-        ERROR,INT,FLOAT,NOTHING,CONSTANT
+        ERROR,INT,FLOAT,NOTHING,CONSTANT,STRING
     }type;
 }Operand;
 typedef struct {
@@ -47,13 +49,14 @@ typedef struct {
     }constant;
     int r[REG_COUNT];
     float x[REG_COUNT];
-    const char* cursor; 
+    const char* cursor;
+    char strbuf[100]; 
 }Machine;
 Machine m1={0};
 //Functions
 //Memory Operations
 int FMOV(Operand op1,Operand op2){
-    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+    if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
         printf("MOV Failed: Invalid operands\n");
         return 1;
     }
@@ -66,7 +69,7 @@ int FMOV(Operand op1,Operand op2){
     return 0;
 }
 int FCAST(Operand op1,Operand op2){
-     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+     if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
         printf("CAST Failed: Invalid operands\n");
         return 1;
     }
@@ -80,7 +83,7 @@ int FCAST(Operand op1,Operand op2){
 }
 //Arithemtic/Math operations
 int FADD(Operand op1,Operand op2){
-    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+    if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
         printf("ADD Failed: Invalid operands\n");
         return 1;
     }
@@ -93,7 +96,7 @@ int FADD(Operand op1,Operand op2){
     return 0;
 }
 int FSUB(Operand op1,Operand op2){
-   if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+   if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
         printf("SUB Failed: Invalid operands\n");
         return 1;
     }
@@ -106,7 +109,7 @@ int FSUB(Operand op1,Operand op2){
     return 0;
 }
 int FMUL(Operand op1,Operand op2){
-     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+     if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
         printf("MUL Failed: Invalid operands\n");
         return 1;
     }
@@ -119,7 +122,7 @@ int FMUL(Operand op1,Operand op2){
     return 0;
 }
 int FDIV(Operand op1,Operand op2){
-    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+    if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
         printf("DIV Failed: Invalid operands\n");
         return 1;
     }
@@ -137,7 +140,7 @@ int FDIV(Operand op1,Operand op2){
 
 }
 int FMOD(Operand op1,Operand op2){
-    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op1.type==FLOAT){
+    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op1.type==FLOAT || op1.type==STRING || op2.type==STRING){
         printf("MOD Failed: Invalid operands\n");
         return 1;
     }
@@ -149,7 +152,7 @@ int FMOD(Operand op1,Operand op2){
     return 0;
 }
 int FPOW(Operand op1,Operand op2){
-     if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING){
+     if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
         printf("POW Failed: Invalid operands\n");
         return 1;
     }
@@ -171,7 +174,7 @@ int FEND(Operand op1,Operand op2){
     return 1;
 }
 int FIN(Operand op1,Operand op2){
-    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type!=NOTHING){
+    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type!=NOTHING || op1.type==STRING){
         printf("IN Failed: Invalid operands\n");
         return 1;
     }
@@ -189,11 +192,22 @@ int FOUT(Operand op1,Operand op2){
         return 1;
 }
     if(op1.type==INT){
-        printf("Output is:%d\n",*op1.value.intp);
+        printf("%d",*op1.value.intp);
     }
-    else {
-        printf("Output is:%f\n",*op1.value.floatp);
+    else if(op1.type==FLOAT) {
+        printf("%f",*op1.value.floatp);
     }
+    else if(op1.type==STRING){
+        printf("%s",op1.value.str);
+    }
+    return 0;
+}
+int FPUTC(Operand op1,Operand op2){
+    if(op1.type!=INT || op2.type!=NOTHING){
+        printf("PUTC Failed: Invalid Operands\n");
+        return 1;
+    }
+    printf("%c",(char)*op1.value.intp);
     return 0;
 }
 //Interpreter functions
@@ -217,11 +231,33 @@ Opcode CheckOpcode(Inst* curInst){
     if(strcmp(curInst->code,"POW")==0) return POW;
     if(strcmp(curInst->code,"IN")==0) return IN;
     if(strcmp(curInst->code,"OUT")==0) return OUT;
+    if(strcmp(curInst->code,"PUTC")==0) return PUTC;
     return UNDEFINED;
 }
 int ReadInstruction(Inst* curInst,char* line){
     char extra=' ';
-    sscanf(line,"%6s %5s %12s %c",curInst->code,curInst->op1,curInst->op2,&extra);
+    int offset=0;
+    sscanf(line,"%6s %n",curInst->code,&offset);
+    if(line[offset]=='"'){
+        curInst->op1[0]='"';
+        offset++;
+        char found=0;
+        for(int i=1;line[offset]!='\0';i++,offset++){
+            curInst->op1[i]=line[offset];
+            if(line[offset]=='"') {
+                found=1;
+                curInst->op1[i+1]='\0';
+                break;
+            }
+        }
+        if(!found){ 
+        curInst->op1[0]='\0';
+        return 1; }
+        offset++;
+        sscanf(line+offset,"%12s %c",curInst->op2,&extra);
+    }
+    else sscanf(line+offset,"%99s %12s %c",curInst->op1,curInst->op2,&extra);
+  //  sscanf(line,"%6s %99s %12s %c",curInst->code,curInst->op1,curInst->op2,&extra);
     if(extra!=' '){
         return 1;
     }
@@ -241,10 +277,32 @@ int Execute(ParsedInst* cInst){
         case POW: return FPOW(cInst->op1,cInst->op2);
         case IN: return FIN(cInst->op1,cInst->op2);
         case OUT: return FOUT(cInst->op1,cInst->op2);
+        case PUTC: return FPUTC(cInst->op1,cInst->op2);
         default: return 1;
     
     }
     return 0;
+}
+Operand ParseStringLiteral(char* op){
+    Operand op1;
+    op1.type=STRING;
+    int j=0;
+    for(int i=1;op[i]!='"' && op[i]!='\0';i++,j++){
+        if(op[i]=='\\'){
+            if(op[++i]=='n'){
+                m1.strbuf[j]='\n';
+            }
+            else {
+                m1.strbuf[j]=op[i];
+                }
+        }
+        else {
+            m1.strbuf[j]=op[i];
+        }
+    }
+    m1.strbuf[j]='\0';
+    op1.value.str=m1.strbuf;
+    return op1;
 }
 Operand ParseOperand(char* operand){
     char* endptr;
@@ -252,6 +310,7 @@ Operand ParseOperand(char* operand){
     op.type=ERROR;
     op.value.floatp=NULL;
     int reg=0;
+    if(operand[0]=='"') return ParseStringLiteral(operand);
     if (strcmp(operand," ")==0){
         op.type=NOTHING;
         return op;
@@ -344,6 +403,7 @@ int main(int argc,char* argv[]){
             printf("ERROR:Instruction read unsuccessfully\n");
             break;
         }
+        DumpState(&curInst);
         ParseInst.opcode=CheckOpcode(&curInst);
         if(ParseInst.opcode==UNDEFINED){
             printf("ERROR:Unknown/undefined instruction\n");
@@ -365,7 +425,7 @@ int main(int argc,char* argv[]){
         }
         DumpState(&curInst);
     }
-    printf("Program closed with a error code %d\n",m1.run);
+    printf("\nProgram closed with a error code %d\n",m1.run);
     fclose(File);
     fclose(m1.outputfile);
     free(program);
