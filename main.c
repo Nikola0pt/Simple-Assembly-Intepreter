@@ -219,6 +219,7 @@ void Reset(Inst* curInst,ParsedInst* ParseInst){
     ParseInst->op2.value.floatp=NULL;
     ParseInst->opcode=UNDEFINED;
     m1.constant.iconst=0;
+    m1.strbuf[0]='\0';
 }
 Opcode CheckOpcode(Inst* curInst){
     if(strcmp(curInst->code,"MOV")==0) return MOV;
