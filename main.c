@@ -19,9 +19,11 @@ typedef enum {
     IN,
     OUT,
     PUTC,
+    LABEL,
+    JMP,
 }Opcode;
 typedef struct {
-    char code[7];
+    char code[100];
     char op1[100];
     char op2[12];
 }Inst;
@@ -32,7 +34,7 @@ typedef struct {
         char* str;
     }value;
     enum {
-        ERROR,INT,FLOAT,NOTHING,CONSTANT,STRING
+        ERROR,INT,FLOAT,NOTHING,CONSTANT,STRING,LABELOP
     }type;
 }Operand;
 typedef struct {
@@ -40,6 +42,10 @@ typedef struct {
     Operand op1;
     Operand op2;
 }ParsedInst;
+typedef struct {
+    char name[25];
+    const char* position;
+}Label;
 typedef struct {
     FILE* outputfile;
     int run;
@@ -51,12 +57,14 @@ typedef struct {
     float x[REG_COUNT];
     const char* cursor;
     char strbuf[100]; 
+    Label cache[50];
+    int labelcount;
 }Machine;
 Machine m1={0};
 //Functions
 //Memory Operations
 int FMOV(Operand op1,Operand op2){
-    if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
+    if(op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
         printf("MOV Failed: Invalid operands\n");
         return 1;
     }
@@ -69,7 +77,7 @@ int FMOV(Operand op1,Operand op2){
     return 0;
 }
 int FCAST(Operand op1,Operand op2){
-     if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
+     if(op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
         printf("CAST Failed: Invalid operands\n");
         return 1;
     }
@@ -83,7 +91,7 @@ int FCAST(Operand op1,Operand op2){
 }
 //Arithemtic/Math operations
 int FADD(Operand op1,Operand op2){
-    if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
+    if(op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
         printf("ADD Failed: Invalid operands\n");
         return 1;
     }
@@ -96,7 +104,7 @@ int FADD(Operand op1,Operand op2){
     return 0;
 }
 int FSUB(Operand op1,Operand op2){
-   if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
+   if(op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
         printf("SUB Failed: Invalid operands\n");
         return 1;
     }
@@ -109,7 +117,7 @@ int FSUB(Operand op1,Operand op2){
     return 0;
 }
 int FMUL(Operand op1,Operand op2){
-     if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
+     if(op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
         printf("MUL Failed: Invalid operands\n");
         return 1;
     }
@@ -122,7 +130,7 @@ int FMUL(Operand op1,Operand op2){
     return 0;
 }
 int FDIV(Operand op1,Operand op2){
-    if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
+    if(op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
         printf("DIV Failed: Invalid operands\n");
         return 1;
     }
@@ -140,7 +148,7 @@ int FDIV(Operand op1,Operand op2){
 
 }
 int FMOD(Operand op1,Operand op2){
-    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op1.type==FLOAT || op1.type==STRING || op2.type==STRING){
+    if(op1.type==LABELOP || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op1.type==FLOAT || op1.type==STRING || op2.type==STRING || op2.type==LABELOP){
         printf("MOD Failed: Invalid operands\n");
         return 1;
     }
@@ -152,7 +160,7 @@ int FMOD(Operand op1,Operand op2){
     return 0;
 }
 int FPOW(Operand op1,Operand op2){
-     if(op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING){
+     if(op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
         printf("POW Failed: Invalid operands\n");
         return 1;
     }
@@ -173,8 +181,15 @@ int FEND(Operand op1,Operand op2){
     printf("END Failed: Invalid operands\n");
     return 1;
 }
+int FLABEL(Operand op1,Operand op2){
+    if(op1.type!=NOTHING || op2.type!=NOTHING){
+        printf("No operands on LABEL lines\n");
+        return 1;
+    }
+    return 0;
+}
 int FIN(Operand op1,Operand op2){
-    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type!=NOTHING || op1.type==STRING){
+    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type!=NOTHING || op1.type==STRING || op1.type==LABELOP){
         printf("IN Failed: Invalid operands\n");
         return 1;
     }
@@ -187,7 +202,7 @@ int FIN(Operand op1,Operand op2){
     return 0;
 }
 int FOUT(Operand op1,Operand op2){
-    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT|| op2.type!=NOTHING){
+    if(op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT|| op2.type!=NOTHING || op1.type==LABELOP){
         printf("OUT Failed: Invalid operands\n");
         return 1;
 }
@@ -209,6 +224,20 @@ int FPUTC(Operand op1,Operand op2){
     }
     printf("%c",(char)*op1.value.intp);
     return 0;
+}
+int FJMP(Operand op1,Operand op2){
+    if(op1.type!=LABELOP || op2.type!=NOTHING){
+        printf ("JMP Failed: Invalid Operands\n");
+        return 1;
+    }
+    for (int i=0;i<m1.labelcount;i++){
+        if(strcmp(m1.cache[i].name,op1.value.str)==0){
+            m1.cursor=m1.cache[i].position;
+            return 0;
+        }
+    }
+    printf("JMP Failed: Label doesnt exist\n");
+    return 1;
 }
 //Interpreter functions
 void Reset(Inst* curInst,ParsedInst* ParseInst){
@@ -233,17 +262,20 @@ Opcode CheckOpcode(Inst* curInst){
     if(strcmp(curInst->code,"IN")==0) return IN;
     if(strcmp(curInst->code,"OUT")==0) return OUT;
     if(strcmp(curInst->code,"PUTC")==0) return PUTC;
+    if(strcmp(curInst->code,"JMP")==0) return JMP;
+    if(curInst->code[0]=='.') return LABEL;
     return UNDEFINED;
 }
 int ReadInstruction(Inst* curInst,char* line){
     char extra=' ';
     int offset=0;
-    sscanf(line,"%6s %n",curInst->code,&offset);
+    sscanf(line,"%99s %n",curInst->code,&offset);
     if(line[offset]=='"'){
         curInst->op1[0]='"';
         offset++;
         char found=0;
         for(int i=1;line[offset]!='\0';i++,offset++){
+            if(i>=99) break;
             curInst->op1[i]=line[offset];
             if(line[offset]=='"') {
                 found=1;
@@ -279,6 +311,8 @@ int Execute(ParsedInst* cInst){
         case IN: return FIN(cInst->op1,cInst->op2);
         case OUT: return FOUT(cInst->op1,cInst->op2);
         case PUTC: return FPUTC(cInst->op1,cInst->op2);
+        case LABEL: return FLABEL(cInst->op1,cInst->op2);
+        case JMP: return FJMP(cInst->op1,cInst->op2);
         default: return 1;
     
     }
@@ -311,6 +345,12 @@ Operand ParseOperand(char* operand){
     op.type=ERROR;
     op.value.floatp=NULL;
     int reg=0;
+    if(operand[0]=='.'){
+        op.type=LABELOP;
+        strncpy(m1.strbuf,operand,99);
+        op.value.str=m1.strbuf;
+        return op;
+    }
     if(operand[0]=='"') return ParseStringLiteral(operand);
     if (strcmp(operand," ")==0){
         op.type=NOTHING;
@@ -384,6 +424,7 @@ char* ReadFile(FILE* File){
 int main(int argc,char* argv[]){
     FILE* File;
     m1.run=1;
+    m1.labelcount=0;
     ParsedInst ParseInst;
     Inst curInst;
     File=fopen("program.txt","r");
@@ -393,6 +434,21 @@ int main(int argc,char* argv[]){
         return 1;
     }
     const char* const program=ReadFile(File);
+    m1.cursor=program;
+    while(1){ //Label caching
+        Reset(&curInst,&ParseInst);
+        char line[100];
+        line[0]='\0';
+        if(sgetline(line)) break;
+        if(line[0]=='\0') continue;
+        ReadInstruction(&curInst,line);
+        if(curInst.code[0]=='.'){
+            strncpy(m1.cache[m1.labelcount].name,curInst.code,24);
+            m1.cache[m1.labelcount].position=m1.cursor;
+            m1.labelcount++;
+        }
+        if(strcmp(curInst.code,"END")==0) break;
+    } 
     m1.cursor=program;
     while (m1.run){
         Reset(&curInst,&ParseInst);
@@ -404,7 +460,6 @@ int main(int argc,char* argv[]){
             printf("ERROR:Instruction read unsuccessfully\n");
             break;
         }
-        DumpState(&curInst);
         ParseInst.opcode=CheckOpcode(&curInst);
         if(ParseInst.opcode==UNDEFINED){
             printf("ERROR:Unknown/undefined instruction\n");
