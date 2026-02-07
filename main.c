@@ -21,6 +21,12 @@ typedef enum {
     PUTC,
     LABEL,
     JMP,
+    CMP,
+    JL,
+    JLE,
+    JE,
+    JG,
+    JGE,
 }Opcode;
 typedef struct {
     char code[100];
@@ -59,6 +65,7 @@ typedef struct {
     char strbuf[100]; 
     Label cache[50];
     int labelcount;
+    char flag;
 }Machine;
 Machine m1={0};
 //Functions
@@ -173,6 +180,32 @@ int FPOW(Operand op1,Operand op2){
     return 0;
 }
 //Jumps and Misc
+int FCMP(Operand op1,Operand op2){
+    if(op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==STRING || op2.type==LABELOP){
+        printf("CMP Failed: Invalid Operands\n");
+        return 1;
+    }
+    int ival=0;
+    float fval=0.0;
+    if(op1.type==INT && op2.type!=NOTHING){
+        ival=*op2.value.intp;
+    }
+    if(op1.type==FLOAT && op2.type!=NOTHING){
+        fval=*op2.value.floatp;
+    }
+    if(op1.type==INT){
+        if(*op1.value.intp<ival) m1.flag=-1;
+        else if(*op1.value.intp==ival) m1.flag=0;
+        else m1.flag=1;
+    }
+    if(op1.type==FLOAT){
+        if(*op1.value.floatp<fval) m1.flag=-1;
+        else if(*op1.value.floatp==fval) m1.flag=0;
+        else m1.flag=1;
+    }
+    return 0;
+    
+}
 int FEND(Operand op1,Operand op2){
     if (op1.type==NOTHING && op2.type==NOTHING){
         m1.run=0;
@@ -239,6 +272,46 @@ int FJMP(Operand op1,Operand op2){
     printf("JMP Failed: Label doesnt exist\n");
     return 1;
 }
+int FJL(Operand op1,Operand op2){
+    if(op1.type!=LABELOP || op2.type!=NOTHING){
+        printf ("JL Failed: Invalid Operands\n");
+        return 1;
+    }
+    if(m1.flag==-1) return FJMP(op1,op2);
+    return 0;
+}
+int FJLE(Operand op1,Operand op2){
+    if(op1.type!=LABELOP || op2.type!=NOTHING){
+        printf ("JLE Failed: Invalid Operands\n");
+        return 1;
+    }
+    if(m1.flag<=0) return FJMP(op1,op2);
+    return 0;
+}
+int FJE(Operand op1,Operand op2){
+    if(op1.type!=LABELOP || op2.type!=NOTHING){
+        printf ("JE Failed: Invalid Operands\n");
+        return 1;
+    }
+    if(m1.flag==0) return FJMP(op1,op2);
+    return 0;
+}
+int FJG(Operand op1,Operand op2){
+    if(op1.type!=LABELOP || op2.type!=NOTHING){
+        printf ("JG Failed: Invalid Operands\n");
+        return 1;
+    }
+    if(m1.flag==1) return FJMP(op1,op2);
+    return 0;
+}
+int FJGE(Operand op1,Operand op2){
+    if(op1.type!=LABELOP || op2.type!=NOTHING){
+        printf ("JL Failed: Invalid Operands\n");
+        return 1;
+    }
+    if(m1.flag>=0) return FJMP(op1,op2);
+    return 0;
+}
 //Interpreter functions
 void Reset(Inst* curInst,ParsedInst* ParseInst){
     strcpy(curInst->code," ");
@@ -263,6 +336,12 @@ Opcode CheckOpcode(Inst* curInst){
     if(strcmp(curInst->code,"OUT")==0) return OUT;
     if(strcmp(curInst->code,"PUTC")==0) return PUTC;
     if(strcmp(curInst->code,"JMP")==0) return JMP;
+    if(strcmp(curInst->code,"CMP")==0) return CMP;
+    if(strcmp(curInst->code,"JL")==0) return JL;
+    if(strcmp(curInst->code,"JLE")==0) return JLE;
+    if(strcmp(curInst->code,"JE")==0) return JE;
+    if(strcmp(curInst->code,"JG")==0) return JG;
+    if(strcmp(curInst->code,"JGE")==0) return JGE;
     if(curInst->code[0]=='.') return LABEL;
     return UNDEFINED;
 }
@@ -313,6 +392,12 @@ int Execute(ParsedInst* cInst){
         case PUTC: return FPUTC(cInst->op1,cInst->op2);
         case LABEL: return FLABEL(cInst->op1,cInst->op2);
         case JMP: return FJMP(cInst->op1,cInst->op2);
+        case CMP: return FCMP(cInst->op1,cInst->op2);
+        case JL: return FJL(cInst->op1,cInst->op2);
+        case JLE: return FJLE(cInst->op1,cInst->op2);
+        case JE: return FJE(cInst->op1,cInst->op2);
+        case JG: return FJG(cInst->op1,cInst->op2);
+        case JGE: return FJGE(cInst->op1,cInst->op2);
         default: return 1;
     
     }
@@ -388,6 +473,7 @@ Operand ParseOperand(char* operand){
 int sgetline(char* line){
     int offset=0;
     char temp[100];
+    temp[0]='\0';
     sscanf(m1.cursor,"\n%99[^\n]%n",temp,&offset);
     m1.cursor+=offset;
     if(temp[0]=='\0') return 1;
@@ -424,6 +510,7 @@ char* ReadFile(FILE* File){
 int main(int argc,char* argv[]){
     FILE* File;
     m1.run=1;
+    m1.flag=0; //-1 is less than, 0 is equal, 1 is greater than
     m1.labelcount=0;
     ParsedInst ParseInst;
     Inst curInst;
@@ -447,7 +534,7 @@ int main(int argc,char* argv[]){
             m1.cache[m1.labelcount].position=m1.cursor;
             m1.labelcount++;
         }
-        if(strcmp(curInst.code,"END")==0) break;
+        if(*m1.cursor=='\0') break;
     } 
     m1.cursor=program;
     while (m1.run){
