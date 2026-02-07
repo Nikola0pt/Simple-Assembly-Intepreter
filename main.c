@@ -27,6 +27,12 @@ typedef enum {
     JE,
     JG,
     JGE,
+    SHR,
+    SHL,
+    AND,
+    OR,
+    XOR,
+    NOT,
 }Opcode;
 typedef struct {
     char code[100];
@@ -40,7 +46,7 @@ typedef struct {
         char* str;
     }value;
     enum {
-        ERROR,INT,FLOAT,NOTHING,CONSTANT,STRING,LABELOP
+        ERROR,INT,FLOAT,NOTHING,CONSTANT,STRING,LABELOP,STACK
     }type;
 }Operand;
 typedef struct {
@@ -64,6 +70,8 @@ typedef struct {
     const char* cursor;
     char strbuf[100]; 
     Label cache[50];
+    int stack[256];
+    int sp;
     int labelcount;
     char flag;
 }Machine;
@@ -95,6 +103,61 @@ int FCAST(Operand op1,Operand op2){
         *op1.value.floatp=(float)*op2.value.intp;
     }
     return 0;
+}
+int FOR(Operand op1,Operand op2){
+    if(op1.type==FLOAT ||op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
+        printf("OR Failed: Invalid operands\n");
+        return 1;
+    }
+        *op1.value.intp|=*op2.value.intp;
+        return 0;
+    
+}
+int FAND(Operand op1,Operand op2){
+    if(op1.type==FLOAT ||op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
+        printf("AND Failed: Invalid operands\n");
+        return 1;
+    }
+        *op1.value.intp&=*op2.value.intp;
+        return 0;
+    
+}
+int FXOR(Operand op1,Operand op2){
+    if(op1.type==FLOAT ||op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
+        printf("XOR Failed: Invalid operands\n");
+        return 1;
+    }
+        *op1.value.intp^=*op2.value.intp;
+        return 0;
+    
+        
+}
+int FNOT(Operand op1,Operand op2){
+    if(op1.type==FLOAT ||op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type!=NOTHING){
+        printf("NOT Failed: Invalid operands\n");
+        return 1;
+    }
+        *op1.value.intp=~*op1.value.intp;
+        return 0;
+    
+}
+int FSHR(Operand op1,Operand op2){
+    if(op1.type==FLOAT ||op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
+        printf("SHR Failed: Invalid operands\n");
+        return 1;
+    }
+        *op1.value.intp>>=*op2.value.intp;
+        return 0;
+    
+}
+int FSHL(Operand op1,Operand op2){
+    if(op1.type==FLOAT ||op1.type==LABELOP || op1.type==STRING || op1.type==NOTHING || op1.type==ERROR || op1.type==CONSTANT || op2.type==ERROR || op2.type==NOTHING || op2.type==STRING || op2.type==LABELOP){
+        printf("SHL Failed: Invalid operands\n");
+        return 1;
+    }
+        *op1.value.intp<<=*op2.value.intp;
+        return 0;
+    
 }
 //Arithemtic/Math operations
 int FADD(Operand op1,Operand op2){
@@ -325,25 +388,33 @@ void Reset(Inst* curInst,ParsedInst* ParseInst){
 }
 Opcode CheckOpcode(Inst* curInst){
     if(strcmp(curInst->code,"MOV")==0) return MOV;
-    if(strcmp(curInst->code,"ADD")==0) return ADD;
-    if(strcmp(curInst->code,"SUB")==0) return SUB;
-    if(strcmp(curInst->code,"END")==0) return END;
-    if(strcmp(curInst->code,"CAST")==0) return CAST;
-    if(strcmp(curInst->code,"MUL")==0) return MUL;
-    if(strcmp(curInst->code,"DIV")==0) return DIV;
-    if(strcmp(curInst->code,"POW")==0) return POW;
-    if(strcmp(curInst->code,"IN")==0) return IN;
-    if(strcmp(curInst->code,"OUT")==0) return OUT;
-    if(strcmp(curInst->code,"PUTC")==0) return PUTC;
-    if(strcmp(curInst->code,"JMP")==0) return JMP;
-    if(strcmp(curInst->code,"CMP")==0) return CMP;
-    if(strcmp(curInst->code,"JL")==0) return JL;
-    if(strcmp(curInst->code,"JLE")==0) return JLE;
-    if(strcmp(curInst->code,"JE")==0) return JE;
-    if(strcmp(curInst->code,"JG")==0) return JG;
-    if(strcmp(curInst->code,"JGE")==0) return JGE;
-    if(curInst->code[0]=='.') return LABEL;
-    return UNDEFINED;
+else    if(strcmp(curInst->code,"ADD")==0) return ADD;
+else    if(strcmp(curInst->code,"SUB")==0) return SUB;
+else    if(strcmp(curInst->code,"END")==0) return END;
+else    if(strcmp(curInst->code,"CAST")==0) return CAST;
+else    if(strcmp(curInst->code,"MUL")==0) return MUL;
+else    if(strcmp(curInst->code,"DIV")==0) return DIV;
+else    if(strcmp(curInst->code,"MOD")==0) return MOD;
+else    if(strcmp(curInst->code,"POW")==0) return POW;
+else    if(strcmp(curInst->code,"IN")==0) return IN;
+else    if(strcmp(curInst->code,"OUT")==0) return OUT;
+else    if(strcmp(curInst->code,"PUTC")==0) return PUTC;
+else    if(strcmp(curInst->code,"JMP")==0) return JMP;
+else    if(strcmp(curInst->code,"CMP")==0) return CMP;
+else    if(strcmp(curInst->code,"JL")==0) return JL;
+else    if(strcmp(curInst->code,"JLE")==0) return JLE;
+else    if(strcmp(curInst->code,"JE")==0) return JE;
+else    if(strcmp(curInst->code,"JG")==0) return JG;
+else    if(strcmp(curInst->code,"JGE")==0) return JGE;
+else    if(strcmp(curInst->code,"SHR")==0) return SHR;
+else    if(strcmp(curInst->code,"SHL")==0) return SHL;
+else    if(strcmp(curInst->code,"AND")==0) return AND;
+else    if(strcmp(curInst->code,"OR")==0) return OR;
+else    if(strcmp(curInst->code,"XOR")==0) return XOR;
+else    if(strcmp(curInst->code,"NOT")==0) return NOT;
+else    if(strcmp(curInst->code,"JGE")==0) return JGE;
+else    if(curInst->code[0]=='.') return LABEL;
+else    return UNDEFINED;
 }
 int ReadInstruction(Inst* curInst,char* line){
     char extra=' ';
@@ -386,6 +457,7 @@ int Execute(ParsedInst* cInst){
         case CAST: return FCAST(cInst->op1,cInst->op2);
         case MUL: return FMUL(cInst->op1,cInst->op2);
         case DIV: return FDIV(cInst->op1,cInst->op2);
+        case MOD: return FMOD(cInst->op1,cInst->op2);
         case POW: return FPOW(cInst->op1,cInst->op2);
         case IN: return FIN(cInst->op1,cInst->op2);
         case OUT: return FOUT(cInst->op1,cInst->op2);
@@ -398,6 +470,12 @@ int Execute(ParsedInst* cInst){
         case JE: return FJE(cInst->op1,cInst->op2);
         case JG: return FJG(cInst->op1,cInst->op2);
         case JGE: return FJGE(cInst->op1,cInst->op2);
+        case SHR: return FSHR(cInst->op1,cInst->op2);
+        case SHL: return FSHL(cInst->op1,cInst->op2);
+        case AND: return FAND(cInst->op1,cInst->op2);
+        case OR: return FOR(cInst->op1,cInst->op2);
+        case XOR: return FXOR(cInst->op1,cInst->op2);
+        case NOT: return FNOT(cInst->op1,cInst->op2);
         default: return 1;
     
     }
